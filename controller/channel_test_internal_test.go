@@ -23,6 +23,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCodexChannelTestEndpoint(t *testing.T) {
+	channel := &model.Channel{Type: constant.ChannelTypeCodex}
+	for _, tt := range []struct {
+		name, model, explicit string
+		stream                bool
+		want                  constant.EndpointType
+	}{
+		{name: "image defaults to generations", model: "gpt-image-2", want: constant.EndpointTypeImageGeneration},
+		{name: "automatic image test requests stream", model: "gpt-image-2", stream: true, want: constant.EndpointTypeImageGeneration},
+		{name: "text keeps responses", model: "gpt-6-astra", want: constant.EndpointTypeOpenAIResponse},
+		{name: "explicit endpoint wins", model: "gpt-image-2", explicit: string(constant.EndpointTypeOpenAIResponse), want: constant.EndpointTypeOpenAIResponse},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			endpoint := normalizeChannelTestEndpoint(channel, tt.explicit, tt.model)
+			assert.Equal(t, string(tt.want), endpoint)
+			request := buildTestRequest(tt.model, endpoint, channel, tt.stream)
+			if tt.want == constant.EndpointTypeImageGeneration {
+				image, ok := request.(*dto.ImageRequest)
+				require.True(t, ok)
+				assert.Equal(t, tt.model, image.Model)
+				assert.Equal(t, tt.stream, image.IsStream(nil))
+			}
+		})
+	}
+}
+
 func TestValidateChannelProxy(t *testing.T) {
 	tests := []struct {
 		name    string

@@ -41,12 +41,15 @@ type testResult struct {
 	newAPIError *types.NewAPIError
 }
 
-func normalizeChannelTestEndpoint(channel *model.Channel, endpointType string) string {
+func normalizeChannelTestEndpoint(channel *model.Channel, endpointType string, modelName string) string {
 	normalized := strings.TrimSpace(endpointType)
 	if normalized != "" {
 		return normalized
 	}
 	if channel != nil && channel.Type == constant.ChannelTypeCodex {
+		if common.IsImageGenerationModel(modelName) {
+			return string(constant.EndpointTypeImageGeneration)
+		}
 		return string(constant.EndpointTypeOpenAIResponse)
 	}
 	return normalized
@@ -108,7 +111,7 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 		}
 	}
 
-	endpointType = normalizeChannelTestEndpoint(channel, endpointType)
+	endpointType = normalizeChannelTestEndpoint(channel, endpointType, testModel)
 
 	requestPath := "/v1/chat/completions"
 
@@ -712,12 +715,16 @@ func buildTestRequest(model string, endpointType string, channel *model.Channel,
 			}
 		case constant.EndpointTypeImageGeneration:
 			// 返回 ImageRequest
-			return &dto.ImageRequest{
+			request := &dto.ImageRequest{
 				Model:  model,
 				Prompt: "a cute cat",
 				N:      lo.ToPtr(uint(1)),
 				Size:   "1024x1024",
 			}
+			if channel != nil && channel.Type == constant.ChannelTypeCodex {
+				request.Stream = lo.ToPtr(isStream)
+			}
+			return request
 		case constant.EndpointTypeJinaRerank:
 			// 返回 RerankRequest
 			return &dto.RerankRequest{
