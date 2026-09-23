@@ -22,13 +22,19 @@ import (
 
 func TestCodexImagesHTTPRelay(t *testing.T) {
 	for _, endpoint := range []struct {
-		path string
-		mode int
+		path    string
+		mode    int
+		model   string
+		quality string
 	}{
-		{path: "generations", mode: relayconstant.RelayModeImagesGenerations},
-		{path: "edits", mode: relayconstant.RelayModeImagesEdits},
+		{path: "generations", mode: relayconstant.RelayModeImagesGenerations, model: "gpt-image-2", quality: "low"},
+		{path: "edits", mode: relayconstant.RelayModeImagesEdits, model: "gpt-image-2", quality: "low"},
+		{path: "generations", mode: relayconstant.RelayModeImagesGenerations, model: "gpt-image-2.5-sunburst", quality: "xhigh"},
+		{path: "edits", mode: relayconstant.RelayModeImagesEdits, model: "gpt-image-2.5-sunburst", quality: "max"},
+		{path: "generations", mode: relayconstant.RelayModeImagesGenerations, model: "gpt-image-2.5-flare", quality: "max"},
+		{path: "edits", mode: relayconstant.RelayModeImagesEdits, model: "gpt-image-2.5-flare", quality: "xhigh"},
 	} {
-		t.Run(endpoint.path, func(t *testing.T) {
+		t.Run(endpoint.model+"/"+endpoint.path, func(t *testing.T) {
 			const responseJSON = `{"created":123,"quality":"low","size":"1024x1024","output_format":"png","data":[{"b64_json":"aW1hZ2U="}],"usage":{"input_tokens":3,"output_tokens":4,"input_tokens_details":{"image_tokens":2,"text_tokens":1}}}`
 			type receivedRequest struct {
 				method, path string
@@ -45,9 +51,9 @@ func TestCodexImagesHTTPRelay(t *testing.T) {
 			}))
 			defer upstream.Close()
 
-			requestJSON := `{"model":"gpt-image-2","prompt":"a red cube","quality":"low","size":"1024x1024","output_format":"png","output_compression":0,"stream":false}`
+			requestJSON := fmt.Sprintf(`{"model":%q,"prompt":"a red cube","quality":%q,"size":"1024x1024","output_format":"png","output_compression":0,"stream":false}`, endpoint.model, endpoint.quality)
 			if endpoint.mode == relayconstant.RelayModeImagesEdits {
-				requestJSON = `{"model":"gpt-image-2","prompt":"make the cube blue","quality":"low","size":"1024x1024","output_format":"png","output_compression":0,"stream":false,"images":[{"image_url":"data:image/png;base64,aW1hZ2U="}]}`
+				requestJSON = fmt.Sprintf(`{"model":%q,"prompt":"make the cube blue","quality":%q,"size":"1024x1024","output_format":"png","output_compression":0,"stream":false,"images":[{"image_url":"data:image/png;base64,aW1hZ2U="}]}`, endpoint.model, endpoint.quality)
 			}
 			recorder := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(recorder)
@@ -64,7 +70,7 @@ func TestCodexImagesHTTPRelay(t *testing.T) {
 					ApiKey:         `{"access_token":"test-access","account_id":"test-account"}`,
 				},
 				RelayMode:       endpoint.mode,
-				OriginModelName: "gpt-image-2",
+				OriginModelName: endpoint.model,
 			}
 			info.PriceData.UsePrice = true
 			adaptor := &Adaptor{}
