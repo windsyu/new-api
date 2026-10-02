@@ -25,6 +25,10 @@ func ImageHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *type
 	info.InitChannelMeta(c)
 	info.BillingImageCount = nil
 	info.ImageRequestCount = 0
+	// Check before the raw-body passthrough branch: Codex always sends JSON headers.
+	if info.ApiType == constant.APITypeCodex && c.ContentType() != gin.MIMEJSON {
+		return types.NewErrorWithStatusCode(fmt.Errorf("codex channel: images endpoints require application/json"), types.ErrorCodeInvalidRequest, http.StatusUnsupportedMediaType, types.ErrOptionWithSkipRetry())
+	}
 
 	imageReq, ok := info.Request.(*dto.ImageRequest)
 	if !ok {

@@ -6,6 +6,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWanEndpointsDistinguishImagesFromVideos(t *testing.T) {
@@ -25,4 +26,16 @@ func TestWanEndpointsDistinguishImagesFromVideos(t *testing.T) {
 			assert.NotContains(t, common.GetEndpointTypesByChannelType(constant.ChannelTypeAli, name), constant.EndpointTypeImageGeneration)
 		})
 	}
+}
+
+func TestCodexImageModelEndpoint(t *testing.T) {
+	for _, model := range []string{"gpt-image-2", "gpt-image-2.5-sunburst", "gpt-image-2.5-flare"} {
+		t.Run(model, func(t *testing.T) {
+			assert.True(t, common.IsImageGenerationModel(model))
+			endpoints := common.GetEndpointTypesByChannelType(constant.ChannelTypeCodex, model)
+			require.NotEmpty(t, endpoints)
+			assert.Equal(t, constant.EndpointTypeImageGeneration, endpoints[0])
+		})
+	}
+	assert.False(t, common.IsImageGenerationModel("gpt-6-astra"))
 }
