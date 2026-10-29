@@ -221,6 +221,7 @@ export function Footer(props: FooterProps) {
   )
 
   const displayColumns = props.columns ?? fallbackColumns
+  const columnOccurrences = new Map<string, number>()
 
   if (footerHtml) {
     return (
@@ -272,20 +273,33 @@ export function Footer(props: FooterProps) {
           {/* Links columns */}
           {isDemoSiteMode && (
             <div className='grid grid-cols-3 gap-8 md:gap-16'>
-              {displayColumns.map((column, index) => (
-                <div key={index}>
-                  <p className='text-muted-foreground/50 mb-3 text-xs font-medium tracking-wider uppercase'>
-                    {t(column.title)}
-                  </p>
-                  <ul className='space-y-2.5'>
-                    {column.links.map((link, linkIndex) => (
-                      <li key={linkIndex}>
-                        <FooterLinkItem link={link} />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+              {displayColumns.map((column) => {
+                const identity = JSON.stringify(
+                  column.links.map((link) => link.href)
+                )
+                const occurrence = columnOccurrences.get(identity) ?? 0
+                columnOccurrences.set(identity, occurrence + 1)
+                const linkOccurrences = new Map<string, number>()
+                return (
+                  <div key={`${identity}:${occurrence}`}>
+                    <p className='text-muted-foreground/50 mb-3 text-xs font-medium tracking-wider uppercase'>
+                      {t(column.title)}
+                    </p>
+                    <ul className='space-y-2.5'>
+                      {column.links.map((link) => {
+                        const linkOccurrence =
+                          linkOccurrences.get(link.href) ?? 0
+                        linkOccurrences.set(link.href, linkOccurrence + 1)
+                        return (
+                          <li key={JSON.stringify([link.href, linkOccurrence])}>
+                            <FooterLinkItem link={link} />
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>

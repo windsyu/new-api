@@ -74,15 +74,22 @@ export function NavLinkList({
   className,
   itemClassName,
 }: NavLinkListProps) {
+  const linkOccurrences = new Map<string, number>()
+
   return (
     <>
-      {links.map((link, index) => (
-        <NavLinkItem
-          key={index}
-          link={link}
-          className={cn(className, itemClassName)}
-        />
-      ))}
+      {links.map((link) => {
+        const identity = JSON.stringify([link.href, Boolean(link.external)])
+        const occurrence = linkOccurrences.get(identity) ?? 0
+        linkOccurrences.set(identity, occurrence + 1)
+        return (
+          <NavLinkItem
+            key={`${identity}:${occurrence}`}
+            link={link}
+            className={cn(className, itemClassName)}
+          />
+        )
+      })}
     </>
   )
 }
